@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>YVDAL - Medical AI Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'DM Sans',sans-serif;background:#ede8f5;color:#1a1a2e;overflow:hidden}
+  :root{--purple:#7c5cbf;--purple-dark:#5a3fa0;--purple-light:#a98de0;--white:#fff}
+  
+  #tap-screen{position:fixed;inset:0;z-index:2000;background:#0a0a12;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer}
+  #tap-screen .t-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(52px,16vw,88px);color:rgba(255,255,255,0.08)}
+  #tap-screen .t-hint{font-size:11px;letter-spacing:4px;color:var(--purple-light);animation:blink 2s infinite}
+  @keyframes blink{0%,100%{opacity:0.3}50%{opacity:0.9}}
+  
+  #intro{position:fixed;inset:0;z-index:1000;background:#0a0a12;display:none;flex-direction:column;align-items:center;justify-content:center}
+  #intro .yvdal-text{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(56px,17vw,96px);background:linear-gradient(135deg,#fff,#c4a8f0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;opacity:0;animation:logoReveal 1.2s forwards 0.5s}
+  #intro .gold-line{width:0;height:1px;background:linear-gradient(90deg,transparent,#c4a8f0,#fff);animation:goldLineGrow 0.8s forwards 1.5s}
+  #intro .byline{font-size:10px;letter-spacing:4px;color:rgba(196,168,240,0.7);opacity:0;animation:bylineFade 0.8s forwards 2.1s}
+  @keyframes logoReveal{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes goldLineGrow{from{width:0}to{width:140px}}
+  @keyframes bylineFade{from{opacity:0}to{opacity:1}}
+  
+  .auth-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 24px}
+  .auth-screen.active{display:flex}
+  .auth-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:38px}
+  .auth-card{background:var(--white);border-radius:24px;padding:28px 24px;width:100%;max-width:380px}
+  .auth-card input{width:100%;padding:14px 16px;border-radius:14px;border:1.5px solid #d8cef0;margin-bottom:12px;background:#ede8f5}
+  .auth-btn{width:100%;padding:15px;border-radius:14px;border:none;background:var(--purple);color:white;font-weight:700;cursor:pointer}
+  .auth-switch{text-align:center;font-size:13px;margin-top:12px}
+  .auth-switch span{color:var(--purple);cursor:pointer}  #chat-screen{display:none;flex-direction:column;height:100vh}
+  #chat-screen.active{display:flex}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:white;box-shadow:0 1px 12px rgba(124,92,191,0.08)}
+  .topbar-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:22px}
+  .menu-btn{width:36px;height:36px;border-radius:10px;border:none;background:#ede8f5;cursor:pointer;font-size:20px}
+  
+  .mode-bar{display:flex;gap:8px;padding:10px 16px;background:white;border-bottom:1px solid #d8cef0;overflow-x:auto}
+  .mode-pill{padding:6px 14px;border-radius:20px;border:1.5px solid #d8cef0;font-size:12px;cursor:pointer;white-space:nowrap}
+  .mode-pill.active{background:var(--purple);color:white;border-color:var(--purple)}
+  
+  .messages-area{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+  .msg-row{display:flex;gap:8px;animation:msgIn 0.3s}
+  .msg-row.user{flex-direction:row-reverse}
+  .msg-bubble{max-width:75%;padding:11px 15px;border-radius:18px;font-size:14px;line-height:1.5}
+  .msg-row.ai .msg-bubble{background:white;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
+  .msg-row.user .msg-bubble{background:var(--purple);color:white}
+  @keyframes msgIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  
+  .typing-dots{display:flex;gap:4px;padding:8px}
+  .typing-dots span{width:8px;height:8px;border-radius:50%;background:var(--purple-light);animation:dot 1.2s infinite}
+  .typing-dots span:nth-child(2){animation-delay:0.2s}
+  .typing-dots span:nth-child(3){animation-delay:0.4s}
+  @keyframes dot{0%,80%,100%{opacity:0.3}40%{opacity:1}}
+  
+  .input-area{padding:10px 14px 16px;background:white;border-top:1px solid #d8cef0;display:flex;gap:10px}
+  .input-wrap{flex:1;background:#ede8f5;border-radius:20px;padding:10px 14px;border:1.5px solid #d8cef0}
+  .input-wrap:focus-within{border-color:var(--purple)}
+  #user-input{flex:1;border:none;background:transparent;outline:none;resize:none;font-family:inherit;font-size:14px}
+  .send-btn{width:42px;height:42px;border-radius:50%;border:none;background:var(--purple);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .send-btn svg{width:18px;height:18px;fill:white}
+  
+  .greeting-card{background:linear-gradient(135deg,var(--purple),var(--purple-dark));border-radius:18px;padding:18px 20px;color:white;margin-bottom:12px}
+  .quick-prompts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .quick-chip{padding:8px 13px;border-radius:20px;background:white;font-size:12px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+  .quick-chip:active{background:var(--purple);color:white}
+  
+  .sidebar{position:fixed;top:0;left:-280px;width:280px;height:100vh;background:white;z-index:101;transition:left 0.3s;box-shadow:4px 0 20px rgba(0,0,0,0.1)}
+  .sidebar.open{left:0}
+  .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100}
+  .sidebar-overlay.open{display:block}
+  .sidebar-new-btn{margin:12px 16px;padding:12px;border:1.5px dashed var(--purple-light);background:none;border-radius:12px;width:calc(100% - 32px);cursor:pointer;color:var(--purple);font-weight:600}
+  .history-item{padding:10px 12px;border-radius:10px;cursor:pointer;margin-bottom:4px}
+  .history-item.active{background:#ede8f5;color:var(--purple)}
+  .topbar-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--purple-light),var(--purple));display:flex;align-items:center;justify-content:center;color:white;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body><div id="tap-screen" onclick="startIntro()">
+  <div class="t-logo">YVDAL</div>
+  <div class="t-hint">Tap to enter</div>
+</div>
+
+<div id="intro">
+  <div class="center-wrap" style="text-align:center">
+    <div class="yvdal-text">YVDAL</div>
+    <div class="gold-line"></div>
+    <div class="byline">BY PRAISE EL ILEYA OPESEME</div>
+    <div class="tagline" style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:8px">Powered by Gemini AI</div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <div class="auth-screen active" id="login-screen">
+    <div class="auth-logo">YVDAL</div>
+    <div class="auth-tagline" style="margin-bottom:20px">Medical AI Assistant</div>
+    <div class="auth-card">
+      <h2 style="margin-bottom:16px">Welcome back</h2>
+      <input type="email" id="login-email" placeholder="Email">
+      <input type="password" id="login-password" placeholder="Password">
+      <div class="auth-error" id="login-error" style="color:#e05c5c;font-size:12px;min-height:20px"></div>
+      <button class="auth-btn" onclick="handleLogin()">Sign In</button>
+      <div class="auth-switch">No account? <span onclick="showSignup()">Create one</span></div>
+    </div>
+  </div>
+
+  <div class="auth-screen" id="signup-screen">
+    <div class="auth-logo">YVDAL</div>
+    <div class="auth-card">
+      <h2>Create account</h2>
+      <input type="text" id="signup-name" placeholder="Full name">
+      <input type="email" id="signup-email" placeholder="Email">
+      <input type="password" id="signup-password" placeholder="Password (min 6 chars)">
+      <div class="auth-error" id="signup-error" style="color:#e05c5c;font-size:12px;min-height:20px"></div>
+      <button class="auth-btn" onclick="handleSignup()">Get Started</button>
+      <div class="auth-switch">Have an account? <span onclick="showLogin()">Sign in</span></div>
+    </div>
+  </div>  <div id="chat-screen">
+    <div class="topbar">
+      <div class="topbar-left" style="display:flex;gap:10px;align-items:center">
+        <button class="menu-btn" onclick="openSidebar()">☰</button>
+        <div class="topbar-logo">YVDAL</div>
+      </div>
+      <div class="topbar-avatar" id="top-avatar">P</div>
+    </div>
+
+    <div class="mode-bar">
+      <div class="mode-pill active" data-mode="general" onclick="setMode(this)">💬 General</div>
+      <div class="mode-pill" data-mode="medical" onclick="setMode(this)">🩺 Medical</div>
+    </div>
+
+    <div class="messages-area" id="messages-area"></div>
+
+    <div class="input-area">
+      <div class="input-wrap">
+        <textarea id="user-input" placeholder="Ask YVDAL anything..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"></textarea>
+      </div>
+      <button class="send-btn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div style="padding:20px;border-bottom:1px solid #ede8f5">
+    <div style="font-weight:800;font-size:18px">📋 Chats</div>
+  </div>
+  <button class="sidebar-new-btn" onclick="newChat();closeSidebar()">+ New Chat</button>
+  <div class="history-list" id="history-list" style="flex:1;overflow-y:auto;padding:12px"></div>
+  <div style="padding:16px;border-top:1px solid #ede8f5;display:flex;align-items:center;gap:10px">
+    <div id="sidebar-avatar" style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#a98de0,#7c5cbf);display:flex;align-items:center;justify-content:center;color:white;font-weight:700">P</div>
+    <div id="sidebar-name" style="flex:1;font-size:13px">User</div>
+    <button onclick="handleLogout()" style="background:none;border:none;color:#888;cursor:pointer">Sign out</button>
+  </div>
+</div>
+
+<script>
+// GEMINI API KEY - ACTIVATED AND WORKING
+const GEMINI_API_KEY = 'AQ.Ab8RN6K4RywmydGeEPopMfS6sKyJQm467sYm9hKTXVDWtfT2sg';
+
+let currentUser = null;
+let currentMode = 'general';
+let chatHistory = [];
+let sessions = [];
+let currentSessionId = null;
+
+function startIntro() {
+  document.getElementById('tap-screen').style.display = 'none';
+  const intro = document.getElementById('intro');
+  intro.style.display = 'flex';
+  setTimeout(() => {
+    intro.style.opacity = '0';
+    intro.style.transition = 'opacity 0.7s';
+    setTimeout(() => {
+      intro.style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      checkSession();
+    }, 700);
+  }, 4000);
+}function getUsers() { return JSON.parse(localStorage.getItem('yvdal_users')||'{}'); }
+function saveUsers(u) { localStorage.setItem('yvdal_users', JSON.stringify(u)); }
+
+function checkSession() {
+  const s = localStorage.getItem('yvdal_session');
+  if (s) {
+    currentUser = JSON.parse(s);
+    enterChat();
+  }
+}
+
+function showSignup() {
+  document.getElementById('login-screen').classList.remove('active');
+  document.getElementById('signup-screen').classList.add('active');
+}
+function showLogin() {
+  document.getElementById('signup-screen').classList.remove('active');
+  document.getElementById('login-screen').classList.add('active');
+}
+
+function handleSignup() {
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim().toLowerCase();
+  const password = document.getElementById('signup-password').value;
+  const err = document.getElementById('signup-error');
+  if (!name||!email||!password) { err.textContent='Fill all fields'; return; }
+  if (password.length<6) { err.textContent='Password must be 6+ chars'; return; }
+  const users = getUsers();
+  if (users[email]) { err.textContent='Email exists'; return; }
+  users[email] = { name, email, password };
+  saveUsers(users);
+  currentUser = { name, email };
+  localStorage.setItem('yvdal_session', JSON.stringify(currentUser));
+  enterChat();
+}
+
+function handleLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const password = document.getElementById('login-password').value;
+  const err = document.getElementById('login-error');
+  const users = getUsers();
+  if (!users[email] || users[email].password !== password) {
+    err.textContent='Invalid email or password';
+    return;
+  }
+  currentUser = { name: users[email].name, email };
+  localStorage.setItem('yvdal_session', JSON.stringify(currentUser));
+  enterChat();
+}
+
+function handleLogout() {
+  localStorage.removeItem('yvdal_session');
+  currentUser = null;
+  document.getElementById('chat-screen').classList.remove('active');
+  document.getElementById('login-screen').classList.add('active');
+  closeSidebar();
+}
+
+function enterChat() {
+  document.getElementById('login-screen').classList.remove('active');
+  document.getElementById('signup-screen').classList.remove('active');
+  document.getElementById('chat-screen').classList.add('active');
+  const initials = currentUser.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('top-avatar').textContent = initials;
+  document.getElementById('sidebar-avatar').textContent = initials;
+  document.getElementById('sidebar-name').textContent = currentUser.name;
+  newChat();
+}
+
+function sessionsKey() { return `yvdal_sessions_${currentUser.email}`; }
+function msgsKey(id) { return `yvdal_msgs_${id}`; }
+
+function loadSessions() {
+  sessions = JSON.parse(localStorage.getItem(sessionsKey())||'[]');
+  renderHistory();
+}
+function saveSessions() { localStorage.setItem(sessionsKey(), JSON.stringify(sessions)); }
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if(!sessions.length) { list.innerHTML='<div style="padding:12px;color:#888">No chats yet</div>'; return; }
+  list.innerHTML = sessions.map(s=>`<div class="history-item ${s.id===currentSessionId?'active':''}" onclick="loadSession('${s.id}')">${s.title||'Chat'}</div>`).join('');
+}
+
+function loadSession(id) {
+  currentSessionId = id;
+  const msgs = JSON.parse(localStorage.getItem(msgsKey(id))||'[]');
+  chatHistory = msgs;
+  const area = document.getElementById('messages-area');
+  area.innerHTML = '';
+  msgs.forEach(m => appendBubble(m.role==='user'?'user':'ai', m.content));
+  renderHistory();
+  closeSidebar();
+}
+
+function newChat() {
+  chatHistory = [];
+  currentSessionId = 'sess_' + Date.now();
+  sessions.unshift({ id: currentSessionId, title: 'New Chat', createdAt: new Date().toISOString() });
+  saveSessions();
+  const area = document.getElementById('messages-area');
+  area.innerHTML = '';
+  const firstName = currentUser.name.split(' ')[0];
+  area.innerHTML = `
+    <div class="greeting-card">
+      <div style="font-size:12px;opacity:0.8">👋 Welcome</div>
+      <div style="font-size:18px;font-weight:700;margin:4px 0">Hey ${firstName}, I'm YVDAL</div>
+      <div style="font-size:13px">Your AI medical assistant. Ask me anything about medicine, anatomy, physiology, or clinical cases.</div>
+    </div>
+    <div class="quick-prompts">
+      <div class="quick-chip" onclick="quickSend('Explain hypertension treatment')">🩺 Hypertension</div>
+      <div class="quick-chip" onclick="quickSend('Diabetes management')">💊 Diabetes</div>
+      <div class="quick-chip" onclick="quickSend('Brachial plexus anatomy')">🧠 Brachial plexus</div>
+      <div class="quick-chip" onclick="quickSend('Cardiac cycle physiology')">❤️ Cardiac cycle</div>
+      <div class="quick-chip" onclick="quickSend('PSG football team')">⚽ PSG</div>
+    </div>
+  `;
+  renderHistory();
+  }function appendBubble(who, text) {
+  const area = document.getElementById('messages-area');
+  const div = document.createElement('div');
+  div.className = `msg-row ${who}`;
+  const formatted = text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  if(who==='ai') {
+    div.innerHTML = `<div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#a98de0,#7c5cbf);display:flex;align-items:center;justify-content:center;font-size:11px;color:white;flex-shrink:0">YV</div><div class="msg-bubble">${formatted}</div>`;
+  } else {
+    div.innerHTML = `<div class="msg-bubble">${formatted}</div>`;
+  }
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+function showTyping() {
+  const area = document.getElementById('messages-area');
+  const div = document.createElement('div');
+  div.className = 'msg-row ai';
+  div.id = 'typing-row';
+  div.innerHTML = `<div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#a98de0,#7c5cbf);display:flex;align-items:center;justify-content:center;font-size:11px;color:white">YV</div><div class="msg-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+function removeTyping() { const el = document.getElementById('typing-row'); if(el) el.remove(); }
+
+function setMode(el) {
+  document.querySelectorAll('.mode-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  currentMode = el.dataset.mode;
+}
+
+function getSystemPrompt() {
+  const name = currentUser?.name?.split(' ')[0] || 'there';
+  if(currentMode === 'medical') {
+    return `You are YVDAL, a medical AI assistant for ${currentUser.name}, a medical student. Provide accurate, detailed medical answers. Use clear explanations. Cover pathophysiology, diagnosis, treatment when relevant. Be helpful and educational. Use markdown with **bold** for emphasis and line breaks for readability.`;
+  }
+  return `You are YVDAL, a helpful AI assistant for ${currentUser.name}. Be friendly, concise, and accurate.`;
+}
+
+function saveMessage(role, content) {
+  const msgs = JSON.parse(localStorage.getItem(msgsKey(currentSessionId))||'[]');
+  msgs.push({ role, content, time: new Date().toISOString() });
+  localStorage.setItem(msgsKey(currentSessionId), JSON.stringify(msgs));
+  if(role==='user' && msgs.filter(m=>m.role==='user').length===1) {
+    const idx = sessions.findIndex(s=>s.id===currentSessionId);
+    if(idx>-1) { sessions[idx].title = content.slice(0,40)+(content.length>40?'…':''); saveSessions(); renderHistory(); }
+  }
+}
+
+async function sendMessage() {
+  const input = document.getElementById('user-input');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value = '';
+  input.style.height = 'auto';
+  document.querySelectorAll('.greeting-card,.quick-prompts').forEach(el=>el.remove());
+  appendBubble('user', text);
+  chatHistory.push({ role: 'user', content: text });
+  saveMessage('user', text);
+  showTyping();
+
+  try {
+    const systemPrompt = getSystemPrompt();
+    const conversation = chatHistory.slice(-15).map(m => `${m.role === 'user' ? 'User' : 'YVDAL'}: ${m.content}`).join('\n');
+    const fullPrompt = `${systemPrompt}\n\nConversation so far:\n${conversation}\n\nUser: ${text}\n\nYVDAL:`;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: fullPrompt }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1024
+        }
+      })
+    });
+
+    const data = await response.json();
+    removeTyping();
+    
+    if(data.error) {
+      console.error('API Error:', data.error);
+      appendBubble('ai', `⚠️ API Error: ${data.error.message || 'Please try again'}`);
+    } else {
+      const reply = data.candidates[0].content.parts[0].text;
+      chatHistory.push({ role: 'assistant', content: reply });
+      saveMessage('assistant', reply);
+      appendBubble('ai', reply);
+    }
+  } catch(e) {
+    console.error('Error:', e);
+    removeTyping();
+    appendBubble('ai', "⚠️ Network error. Please check your connection and try again.");
+  }
+}
+
+function quickSend(text) {
+  document.getElementById('user-input').value = text;
+  sendMessage();
+}
+
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebar-overlay').classList.add('open');
+  loadSessions();
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+</script>
+</body>
+</html>
